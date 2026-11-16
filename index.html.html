@@ -1,0 +1,2715 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="格價" />
+  <title>格價 - 家庭超市格價助手</title>
+  <style>
+    /* ==========================================================================
+       1. CSS 變數與基礎重置 (零外部依賴、極速啟動、手機優先設計)
+       ========================================================================== */
+    :root {
+      --bg: #f4f6f8;
+      --surface: #ffffff;
+      --surface-alt: #f8fafc;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --primary: #0f766e;
+      --primary-dark: #115e59;
+      --primary-soft: #ccfbf1;
+      --accent: #d97706;
+      --accent-soft: #fef3c7;
+      --danger: #dc2626;
+      --danger-soft: #fee2e2;
+      --success: #15803d;
+      --success-soft: #dcfce7;
+      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+      --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+      --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.16);
+      --radius: 14px;
+      --radius-sm: 9px;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100%;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang HK", "PingFang TC", "Hiragino Sans GB", "Microsoft JhengHei", sans-serif;
+      font-size: 15px;
+      line-height: 1.45;
+      overflow-x: hidden;
+    }
+
+    button, input, select {
+      font-family: inherit;
+      font-size: 15px;
+    }
+
+    /* ==========================================================================
+       2. 頂部導覽列 (Header & 雲端同步狀態膠囊)
+       ========================================================================== */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      padding: calc(10px + var(--safe-top)) 14px 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 800;
+      font-size: 19px;
+      color: var(--primary-dark);
+      letter-spacing: -0.02em;
+      flex-shrink: 0;
+    }
+
+    .brand-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, var(--primary), #14b8a6);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      box-shadow: 0 2px 6px rgba(15, 118, 110, 0.28);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sync-pill {
+      border: 1px solid transparent;
+      border-radius: 999px;
+      padding: 5px 11px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: transform 0.12s ease, opacity 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .sync-pill:active {
+      transform: scale(0.96);
+    }
+
+    .sync-pill.disconnected {
+      background: #f1f5f9;
+      color: #475569;
+      border-color: #cbd5e1;
+    }
+
+    .sync-pill.synced {
+      background: var(--success-soft);
+      color: var(--success);
+      border-color: #bbf7d0;
+    }
+
+    .sync-pill.syncing {
+      background: #e0f2fe;
+      color: #0369a1;
+      border-color: #bae6fd;
+      animation: pulse 1.2s infinite;
+    }
+
+    .sync-pill.error {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border-color: #fecaca;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.65; }
+    }
+
+    .more-btn {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .more-btn:active {
+      background: #e2e8f0;
+    }
+
+    /* ==========================================================================
+       3. 主內容區塊與底部導覽列
+       ========================================================================== */
+    .main-container {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 12px 14px calc(88px + var(--safe-bottom)) 14px;
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 40;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-top: 1px solid var(--border);
+      padding: 6px 8px calc(6px + var(--safe-bottom)) 8px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .nav-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      border-radius: 12px;
+      padding: 7px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .nav-btn .nav-icon {
+      font-size: 19px;
+      line-height: 1.1;
+    }
+
+    .nav-btn.active {
+      background: var(--primary-soft);
+      color: var(--primary-dark);
+      font-weight: 800;
+    }
+
+    /* ==========================================================================
+       4. 示範資料橫幅與通用元件 (Card, Input, Button, Chips)
+       ========================================================================== */
+    .demo-banner {
+      background: linear-gradient(135deg, #fffbeb, #fef3c7);
+      border: 1px solid #fcd34d;
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .demo-banner-text {
+      font-size: 13px;
+      font-weight: 700;
+      color: #92400e;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-demo-clear {
+      background: #d97706;
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .btn-demo-clear:active {
+      background: #b45309;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .form-group {
+      margin-bottom: 13px;
+      position: relative;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 5px;
+    }
+
+    .input, .select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-sm);
+      background: #fff;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .input:focus, .select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+    }
+
+    .search-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-wrap .input {
+      padding-left: 36px;
+      padding-right: 36px;
+      font-size: 15.5px;
+    }
+
+    .search-icon-left {
+      position: absolute;
+      left: 11px;
+      font-size: 16px;
+      pointer-events: none;
+    }
+
+    .search-clear-btn {
+      position: absolute;
+      right: 8px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: none;
+      background: #e2e8f0;
+      color: #475569;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .search-clear-btn.visible {
+      display: inline-flex;
+    }
+
+    .chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .chip {
+      border: 1px solid var(--border);
+      background: var(--surface-alt);
+      color: #334155;
+      border-radius: 999px;
+      padding: 5px 11px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+
+    .chip.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .btn {
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 11px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: transform 0.1s ease, opacity 0.15s ease;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      width: 100%;
+      font-size: 16px;
+      padding: 13px;
+      box-shadow: 0 3px 10px rgba(15, 118, 110, 0.25);
+    }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #1e293b;
+      border: 1px solid #cbd5e1;
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .btn-sm {
+      padding: 6px 10px;
+      font-size: 12.5px;
+      border-radius: 8px;
+    }
+
+    /* ==========================================================================
+       5. 查價搜尋卡片與三點里程碑樣式
+       ========================================================================== */
+    .store-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .store-card-header {
+      background: var(--surface-alt);
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .store-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .store-rank-badge {
+      font-size: 11.5px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--success-soft);
+      color: var(--success);
+    }
+
+    .milestone-list {
+      padding: 4px 14px;
+    }
+
+    .milestone-row {
+      padding: 10px 0;
+      border-bottom: 1px dashed #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .milestone-row:last-child {
+      border-bottom: none;
+    }
+
+    .milestone-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .badges-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+
+    .m-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .m-badge.latest {
+      background: #e0f2fe;
+      color: #0369a1;
+    }
+
+    .m-badge.sixm {
+      background: #f3e8ff;
+      color: #7e22ce;
+    }
+
+    .m-badge.alltime {
+      background: #fef3c7;
+      color: #b45309;
+    }
+
+    .m-badge.demo {
+      background: #ffedd5;
+      color: #c2410c;
+    }
+
+    .item-meta-line {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 2px;
+      word-break: break-word;
+    }
+
+    .date-note-line {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .milestone-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .price-box {
+      text-align: right;
+    }
+
+    .price-reg-strike {
+      font-size: 12px;
+      color: #94a3b8;
+      text-decoration: line-through;
+      display: block;
+      line-height: 1.1;
+    }
+
+    .price-main {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--primary-dark);
+      line-height: 1.2;
+    }
+
+    .price-main.is-sale {
+      color: #d97706;
+    }
+
+    .thumb-img {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .del-icon-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid #fecaca;
+      background: #fff5f5;
+      color: var(--danger);
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .del-icon-btn:active {
+      background: var(--danger-soft);
+    }
+
+    .expand-all-btn {
+      width: 100%;
+      border: none;
+      border-top: 1px solid var(--border);
+      background: #f8fafc;
+      color: #475569;
+      padding: 9px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .all-records-drawer {
+      display: none;
+      background: #fcfcfd;
+      border-top: 1px solid var(--border);
+      padding: 6px 14px 10px 14px;
+    }
+
+    .all-records-drawer.open {
+      display: block;
+    }
+
+    /* ==========================================================================
+       6. 記錄價格表單與自動完成建議
+       ========================================================================== */
+    .autocomplete-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 30;
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-md);
+      max-height: 220px;
+      overflow-y: auto;
+      margin-top: 4px;
+      display: none;
+    }
+
+    .autocomplete-list.open {
+      display: block;
+    }
+
+    .ac-item {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ac-item:last-child {
+      border-bottom: none;
+    }
+
+    .ac-item:active {
+      background: var(--primary-soft);
+    }
+
+    .inline-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .price-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .photo-preview-box {
+      margin-top: 8px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface-alt);
+      padding: 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+    }
+
+    .photo-preview-box.visible {
+      display: flex;
+    }
+
+    .photo-preview-box img {
+      width: 64px;
+      height: 64px;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+
+    /* ==========================================================================
+       7. 歷史價格與同價摺疊樣式
+       ========================================================================== */
+    .history-group-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--primary-dark);
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .hist-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px dashed #e2e8f0;
+      gap: 8px;
+    }
+
+    .hist-row:last-child {
+      border-bottom: none;
+    }
+
+    .delta-badge {
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 5px;
+      margin-left: 4px;
+    }
+
+    .delta-down {
+      background: var(--success-soft);
+      color: var(--success);
+    }
+
+    .delta-up {
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    .delta-same {
+      background: #f1f5f9;
+      color: #64748b;
+    }
+
+    .collapsed-pill {
+      width: 100%;
+      margin: 4px 0;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px dashed #cbd5e1;
+      background: #f8fafc;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .collapsed-group {
+      display: none;
+      padding-left: 10px;
+      border-left: 2px solid #cbd5e1;
+      margin: 4px 0;
+    }
+
+    .collapsed-group.open {
+      display: block;
+    }
+
+    /* ==========================================================================
+       8. 彈出視窗 (Modals)、選單、相片燈箱與提示 Toast
+       ========================================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      background: rgba(15, 23, 42, 0.55);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 12px;
+    }
+
+    @media (min-width: 540px) {
+      .modal-backdrop {
+        align-items: center;
+      }
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #fff;
+      width: 100%;
+      max-width: 480px;
+      max-height: 88vh;
+      overflow-y: auto;
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: var(--shadow-lg);
+      animation: slideUp 0.18s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(16px); opacity: 0.7; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .modal-close {
+      border: none;
+      background: #f1f5f9;
+      color: #475569;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .menu-item-btn {
+      width: 100%;
+      text-align: left;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 13px 14px;
+      margin-bottom: 8px;
+      font-size: 14.5px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .menu-item-btn:active {
+      background: #f1f5f9;
+    }
+
+    .menu-item-btn.danger-text {
+      color: var(--danger);
+      border-color: #fecaca;
+      background: #fffafa;
+    }
+
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .lightbox.open {
+      display: flex;
+    }
+
+    .lightbox img {
+      max-width: 100%;
+      max-height: 80vh;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .toast {
+      position: fixed;
+      top: calc(64px + var(--safe-top));
+      left: 50%;
+      transform: translateX(-50%) translateY(-12px);
+      z-index: 90;
+      background: #1e293b;
+      color: #fff;
+      padding: 9px 16px;
+      border-radius: 999px;
+      font-size: 13.5px;
+      font-weight: 600;
+      box-shadow: var(--shadow-md);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.2s ease;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 36px 16px;
+      color: var(--text-muted);
+    }
+
+    .empty-state-icon {
+      font-size: 38px;
+      margin-bottom: 8px;
+    }
+
+    .info-callout {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 12.5px;
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================================
+       頂部導覽列 (品牌標題、即時雲端狀態膠囊、更多選單按鈕)
+       ======================================================================== -->
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-icon">🏷️</span>
+      <span>格價</span>
+    </div>
+    <div class="header-actions">
+      <button id="syncStatusPill" class="sync-pill disconnected" type="button" onclick="openGithubModal()">
+        📱 未連雲端
+      </button>
+      <button class="more-btn" type="button" onclick="openMoreModal()">
+        ⋯ 更多
+      </button>
+    </div>
+  </header>
+
+  <!-- Toast 訊息提示 -->
+  <div id="toast" class="toast"></div>
+
+  <!-- ========================================================================
+       主畫面內容區 (三大分頁)
+       ======================================================================== -->
+  <main class="main-container">
+
+    <!-- 分頁 1：🔍 查價搜尋 -->
+    <section id="tab-search" class="tab-panel active">
+      <!-- 示範資料提示橫幅 (當存在 isDemo: true 紀錄時自動顯示) -->
+      <div id="demoBanner" class="demo-banner" style="display: none;">
+        <div class="demo-banner-text">
+          <span>💡 目前包含示範資料</span>
+        </div>
+        <button type="button" class="btn-demo-clear" onclick="confirmClearDemo()">
+          🧹 清空示範資料
+        </button>
+      </div>
+
+      <!-- 搜尋與篩選控制卡 -->
+      <div class="card">
+        <div class="search-wrap">
+          <span class="search-icon-left">🔍</span>
+          <input id="searchInput" class="input" type="text" placeholder="搜尋貨品名稱、商店或備註..." oninput="handleSearchInput()" />
+          <button id="searchClearBtn" class="search-clear-btn" type="button" onclick="clearSearchInput()">✕</button>
+        </div>
+
+        <!-- 符合貨品快速點選膠囊 -->
+        <div id="productQuickChips" class="chips-row"></div>
+
+        <!-- 動態容量與商店篩選 -->
+        <div class="filter-grid">
+          <div>
+            <select id="filterCapacity" class="select" onchange="renderSearchResults()">
+              <option value="ALL">全部容量</option>
+            </select>
+          </div>
+          <div>
+            <select id="filterStore" class="select" onchange="renderSearchResults()">
+              <option value="ALL">全部商店</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 搜尋結果 (按商店分組 + 3點里程碑摘要) -->
+      <div id="searchResultsContainer"></div>
+    </section>
+
+    <!-- 分頁 2：＋ 記錄價格 -->
+    <section id="tab-add" class="tab-panel">
+      <div class="card">
+        <form id="addRecordForm" onsubmit="handleSaveRecord(event)">
+          <!-- 貨品名稱 + 自動完成建議 -->
+          <div class="form-group">
+            <label class="form-label" for="recProduct">貨品名稱 *</label>
+            <input id="recProduct" class="input" type="text" required autocomplete="off"
+                   placeholder="例如：金象牌泰國香米、新鮮淮山"
+                   oninput="handleProductAutocomplete()" onfocus="handleProductAutocomplete()" />
+            <div id="productAutocomplete" class="autocomplete-list"></div>
+          </div>
+
+          <!-- 容量 / 規格 + 常用快捷膠囊 -->
+          <div class="form-group">
+            <label class="form-label" for="recCapacity">容量 / 規格 *</label>
+            <input id="recCapacity" class="input" type="text" required placeholder="例如：5kg、1支、1包" />
+            <div class="chips-row">
+              <button type="button" class="chip" onclick="setCapacityPreset('5kg')">5kg</button>
+              <button type="button" class="chip" onclick="setCapacityPreset('10kg')">10kg</button>
+              <button type="button" class="chip" onclick="setCapacityPreset('1kg')">1kg</button>
+              <button type="button" class="chip" onclick="setCapacityPreset('500g')">500g</button>
+              <button type="button" class="chip" onclick="setCapacityPreset('1L')">1L</button>
+              <button type="button" class="chip" onclick="setCapacityPreset('1支')">1支</button>
+              <button type="button" class="chip" onclick="setCapacityPreset('1包')">1包</button>
+              <button type="button" class="chip" onclick="setCapacityPreset('1份')">1份</button>
+            </div>
+          </div>
+
+          <!-- 商店選擇 + 行內新增商店 -->
+          <div class="form-group">
+            <label class="form-label" for="recStore">購買商店 *</label>
+            <div class="inline-row">
+              <select id="recStore" class="select" required style="flex: 1;"></select>
+              <button type="button" class="btn btn-secondary btn-sm" style="white-space: nowrap; height: 42px;" onclick="toggleInlineAddStore()">
+                + 新增商店
+              </button>
+            </div>
+            <!-- 行內快速新增商店輸入列 -->
+            <div id="inlineAddStoreBox" style="display: none; margin-top: 8px;" class="inline-row">
+              <input id="inlineNewStoreInput" class="input" type="text" placeholder="輸入新商店名稱..." />
+              <button type="button" class="btn btn-primary btn-sm" style="width: auto; padding: 10px 14px;" onclick="saveInlineNewStore()">
+                加入
+              </button>
+            </div>
+          </div>
+
+          <!-- 雙價格輸入：正價 + 優惠價 -->
+          <div class="form-group">
+            <div class="price-grid">
+              <div>
+                <label class="form-label" for="recRegPrice">正價 (£) *</label>
+                <input id="recRegPrice" class="input" type="number" step="0.01" min="0" inputmode="decimal" required placeholder="0.00" />
+              </div>
+              <div>
+                <label class="form-label" for="recSalePrice">優惠價 (£，選填)</label>
+                <input id="recSalePrice" class="input" type="number" step="0.01" min="0" inputmode="decimal" placeholder="有特價才填" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 日期與備註 -->
+          <div class="price-grid form-group">
+            <div>
+              <label class="form-label" for="recDate">格價日期 *</label>
+              <input id="recDate" class="input" type="date" required />
+            </div>
+            <div>
+              <label class="form-label" for="recNote">備註 (選填)</label>
+              <input id="recNote" class="input" type="text" placeholder="如：會員價、買二送一" />
+            </div>
+          </div>
+
+          <!-- 產品相片拍照/上傳與自動壓縮 -->
+          <div class="form-group">
+            <label class="form-label">產品相片 (選填，自動壓縮省空間)</label>
+            <input id="recPhotoInput" type="file" accept="image/*" style="display: none;" onchange="handlePhotoSelected(event)" />
+            <button type="button" class="btn btn-secondary" style="width: 100%;" onclick="document.getElementById('recPhotoInput').click()">
+              📷 拍照 / 從相簿選取相片
+            </button>
+            <div id="photoPreviewBox" class="photo-preview-box">
+              <img id="photoPreviewImg" src="" alt="相片預覽" />
+              <div style="flex: 1; font-size: 12.5px; color: var(--text-muted);">
+                <div style="font-weight: 700; color: var(--text);">已自動壓縮完成</div>
+                <div id="photoSizeInfo">約 0 KB</div>
+              </div>
+              <button type="button" class="btn btn-danger btn-sm" onclick="clearSelectedPhoto()">✕ 移除</button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">
+            💾 儲存格價紀錄
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- 分頁 3：📈 歷史價格 -->
+    <section id="tab-history" class="tab-panel">
+      <div class="card">
+        <div class="form-group" style="margin-bottom: 8px;">
+          <select id="histProductSelect" class="select" onchange="renderHistoryTab()">
+            <option value="ALL">全部貨品</option>
+          </select>
+        </div>
+        <div class="filter-grid" style="margin-top: 0;">
+          <select id="histPeriodSelect" class="select" onchange="renderHistoryTab()">
+            <option value="6M">過去 6 個月</option>
+            <option value="1Y">過去 1 年</option>
+            <option value="ALL" selected>全部時間</option>
+          </select>
+          <select id="histCapacitySelect" class="select" onchange="renderHistoryTab()">
+            <option value="ALL">全部容量</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="historyResultsContainer"></div>
+    </section>
+
+  </main>
+
+  <!-- ========================================================================
+       底部三大分頁切換列
+       ======================================================================== -->
+  <nav class="bottom-nav">
+    <button id="nav-search" class="nav-btn active" type="button" onclick="switchTab('search')">
+      <span class="nav-icon">🔍</span>
+      <span>查價搜尋</span>
+    </button>
+    <button id="nav-add" class="nav-btn" type="button" onclick="switchTab('add')">
+      <span class="nav-icon">＋</span>
+      <span>記錄價格</span>
+    </button>
+    <button id="nav-history" class="nav-btn" type="button" onclick="switchTab('history')">
+      <span class="nav-icon">📈</span>
+      <span>歷史價格</span>
+    </button>
+  </nav>
+
+  <!-- ========================================================================
+       彈窗 1：⋯ 更多選單
+       ======================================================================== -->
+  <div id="moreModal" class="modal-backdrop" onclick="closeModalOnBackdrop(event, 'moreModal')">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title">⚙️ 更多功能與設定</span>
+        <button type="button" class="modal-close" onclick="closeModal('moreModal')">✕</button>
+      </div>
+
+      <button type="button" class="menu-item-btn" onclick="closeModal('moreModal'); openGithubModal();">
+        <span>☁️ GitHub 雲端儲存（免備份防遺失）</span>
+        <span>›</span>
+      </button>
+
+      <button type="button" class="menu-item-btn" onclick="closeModal('moreModal'); openStoresModal();">
+        <span>🏪 管理商店</span>
+        <span>›</span>
+      </button>
+
+      <button type="button" class="menu-item-btn" onclick="closeModal('moreModal'); confirmClearDemo();">
+        <span>🧹 清空示範資料</span>
+        <span>›</span>
+      </button>
+
+      <button type="button" class="menu-item-btn" onclick="downloadSelfHtml()">
+        <span>📥 下載本程式 (index.html)</span>
+        <span>›</span>
+      </button>
+
+      <button type="button" class="menu-item-btn danger-text" onclick="closeModal('moreModal'); confirmClearAll();">
+        <span>⚠️ 清空全部紀錄</span>
+        <span>›</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       彈窗 2：☁️ GitHub 雲端儲存設定與夫妻一鍵同步
+       ======================================================================== -->
+  <div id="githubModal" class="modal-backdrop" onclick="closeModalOnBackdrop(event, 'githubModal')">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title">☁️ GitHub 雲端儲存</span>
+        <button type="button" class="modal-close" onclick="closeModal('githubModal')">✕</button>
+      </div>
+
+      <div class="info-callout">
+        連結你的 GitHub <strong>私人資料庫 (Private Repo)</strong> 後，所有新增與刪除都會自動儲存至雲端，即使清除手機瀏覽資料也不會遺失，並可與另一半即時共用！
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="ghOwner">1. GitHub 用戶名 (Username)</label>
+        <input id="ghOwner" class="input" type="text" autocomplete="off" placeholder="例如：chan-family" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="ghRepo">2. 私人資料庫名稱 (Private Repo Name)</label>
+        <input id="ghRepo" class="input" type="text" autocomplete="off" placeholder="預設：gejia-data" value="gejia-data" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="ghToken">3. GitHub Token (存取權杖)</label>
+        <div class="inline-row">
+          <input id="ghToken" class="input" type="password" autocomplete="off" placeholder="github_pat_... 或 ghp_..." style="flex: 1;" />
+          <button type="button" class="btn btn-secondary btn-sm" style="height: 42px; white-space: nowrap;" onclick="toggleTokenVisibility()">
+            👁️ 顯示
+          </button>
+        </div>
+      </div>
+
+      <button type="button" class="btn btn-primary" style="margin-bottom: 10px;" onclick="testAndSaveGithubConfig()">
+        🔗 測試連線並儲存設定
+      </button>
+
+      <div class="price-grid" style="margin-bottom: 14px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="manualPullFromGithub()">
+          ⬇️ 立即從 GitHub 載入
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="manualPushToGithub()">
+          ⬆️ 立即備份至 GitHub
+        </button>
+      </div>
+
+      <hr style="border: none; border-top: 1px solid var(--border); margin: 14px 0;" />
+
+      <!-- 夫妻一鍵分享設定碼 -->
+      <div class="form-group">
+        <label class="form-label">💑 夫妻共用一鍵設定碼</label>
+        <button type="button" class="btn btn-secondary" style="width: 100%; margin-bottom: 10px;" onclick="copyCoupleShareCode()">
+          📋 複製夫妻一鍵設定碼
+        </button>
+        <div class="inline-row">
+          <input id="coupleCodeInput" class="input" type="text" placeholder="貼上夫妻設定碼快速連接 (GEJIA_GH:...)" style="flex: 1;" />
+          <button type="button" class="btn btn-primary btn-sm" style="width: auto; padding: 10px 14px;" onclick="applyCoupleShareCode()">
+            連接
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       彈窗 3：🏪 管理商店
+       ======================================================================== -->
+  <div id="storesModal" class="modal-backdrop" onclick="closeModalOnBackdrop(event, 'storesModal')">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title">🏪 管理常用商店</span>
+        <button type="button" class="modal-close" onclick="closeModal('storesModal')">✕</button>
+      </div>
+
+      <div class="inline-row" style="margin-bottom: 12px;">
+        <input id="manageStoreInput" class="input" type="text" placeholder="輸入新商店名稱（如：惠康、百佳、Tesco）" style="flex: 1;" />
+        <button type="button" class="btn btn-primary btn-sm" style="width: auto; padding: 10px 14px;" onclick="addStoreFromModal()">
+          新增
+        </button>
+      </div>
+
+      <div id="manageStoresList"></div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       彈窗 4：自訂確認對話框 (取代 window.confirm，確保所有手機完美運作)
+       ======================================================================== -->
+  <div id="confirmModal" class="modal-backdrop" onclick="closeModalOnBackdrop(event, 'confirmModal')">
+    <div class="modal-box" style="max-width: 380px;">
+      <div class="modal-header">
+        <span id="confirmTitle" class="modal-title">確認操作</span>
+        <button type="button" class="modal-close" onclick="closeModal('confirmModal')">✕</button>
+      </div>
+      <p id="confirmMessage" style="margin: 0 0 16px 0; color: #334155; font-size: 14.5px;"></p>
+      <div class="price-grid">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('confirmModal')">取消</button>
+        <button id="confirmOkBtn" type="button" class="btn btn-danger">確定刪除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       全螢幕相片檢視燈箱
+       ======================================================================== -->
+  <div id="photoLightbox" class="lightbox" onclick="closeLightbox()">
+    <img id="lightboxImg" src="" alt="放大相片" />
+    <div style="color: #fff; margin-top: 12px; font-size: 13px; opacity: 0.85;">點擊任意處關閉</div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       1. 儲存鍵值與全域狀態管理
+       ========================================================================== */
+    const KEYS = {
+      INITIALIZED: 'gejia_initialized',
+      RECORDS: 'gejia_records_v2',
+      STORES: 'gejia_stores_v2',
+      DELETED_IDS: 'gejia_deleted_v1',
+      GH_CFG: 'gejia_gh_cfg_v1'
+    };
+
+    let state = {
+      records: [],
+      stores: [],
+      deletedIds: [],
+      ghConfig: {
+        owner: '',
+        repo: 'gejia-data',
+        token: ''
+      },
+      selectedProductChip: '', // 查價搜尋中點選的精準貨品名稱
+      compressedPhotoDataUrl: '', // 新增表單暫存的壓縮相片
+      syncStatus: 'disconnected', // 'disconnected' | 'syncing' | 'synced' | 'error'
+      confirmCallback: null
+    };
+
+    /* ==========================================================================
+       2. UTF-8 安全 Base64 編碼/解碼 (確保繁體中文與相片在 GitHub API 永不出錯)
+       ========================================================================== */
+    function utf8ToBase64(str) {
+      const bytes = new TextEncoder().encode(str);
+      let binary = '';
+      const chunkSize = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+      }
+      return btoa(binary);
+    }
+
+    function base64ToUtf8(b64) {
+      const clean = (b64 || '').replace(/\s+/g, '');
+      const binary = atob(clean);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return new TextDecoder().decode(bytes);
+    }
+
+    /* ==========================================================================
+       3. 初始化、本機儲存讀寫與首次示範資料載入
+       ========================================================================== */
+    function getTodayISO() {
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function generateId(prefix = 'rec') {
+      return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    function loadLocalState() {
+      try {
+        const rawRecords = localStorage.getItem(KEYS.RECORDS);
+        const rawStores = localStorage.getItem(KEYS.STORES);
+        const rawDeleted = localStorage.getItem(KEYS.DELETED_IDS);
+        const rawGh = localStorage.getItem(KEYS.GH_CFG);
+
+        state.records = rawRecords ? JSON.parse(rawRecords) : [];
+        state.stores = rawStores ? JSON.parse(rawStores) : [];
+        state.deletedIds = rawDeleted ? JSON.parse(rawDeleted) : [];
+        if (rawGh) {
+          state.ghConfig = { ...state.ghConfig, ...JSON.parse(rawGh) };
+        }
+
+        // 僅在首次啟動（未設定 gejia_initialized）時載入 3 筆示範資料
+        if (!localStorage.getItem(KEYS.INITIALIZED)) {
+          const today = getTodayISO();
+          const demoRecords = [
+            {
+              id: 'demo_rice_5kg',
+              productName: '金象牌泰國香米',
+              capacity: '5kg',
+              store: '示範超市 A',
+              regularPrice: 13.50,
+              salePrice: 10.99,
+              effectivePrice: 10.99,
+              date: today,
+              note: '示範特價紀錄',
+              photo: '',
+              isDemo: true,
+              createdAt: Date.now() - 2000,
+              updatedAt: Date.now() - 2000
+            },
+            {
+              id: 'demo_rice_10kg',
+              productName: '錦字牌絲苗米',
+              capacity: '10kg',
+              store: '示範超市 B',
+              regularPrice: 22.00,
+              salePrice: null,
+              effectivePrice: 22.00,
+              date: today,
+              note: '示範正價紀錄',
+              photo: '',
+              isDemo: true,
+              createdAt: Date.now() - 1000,
+              updatedAt: Date.now() - 1000
+            },
+            {
+              id: 'demo_yam_1',
+              productName: '新鮮淮山',
+              capacity: '1條',
+              store: '示範街市菜檔',
+              regularPrice: 2.80,
+              salePrice: 2.20,
+              effectivePrice: 2.20,
+              date: today,
+              note: '示範新鮮食材紀錄',
+              photo: '',
+              isDemo: true,
+              createdAt: Date.now(),
+              updatedAt: Date.now()
+            }
+          ];
+          state.records = demoRecords;
+          localStorage.setItem(KEYS.INITIALIZED, '1');
+          saveLocalState();
+        }
+      } catch (err) {
+        console.error('讀取本機資料失敗:', err);
+      }
+    }
+
+    function saveLocalState() {
+      try {
+        localStorage.setItem(KEYS.RECORDS, JSON.stringify(state.records));
+        localStorage.setItem(KEYS.STORES, JSON.stringify(state.stores));
+        // 保留最近 1000 筆已刪除 ID，防止跨裝置重新復活已刪除紀錄
+        const trimmedDeleted = state.deletedIds.slice(-1000);
+        state.deletedIds = trimmedDeleted;
+        localStorage.setItem(KEYS.DELETED_IDS, JSON.stringify(trimmedDeleted));
+      } catch (err) {
+        showToast('⚠️ 本機儲存空間已滿，建議清理舊相片');
+      }
+    }
+
+    function saveGithubConfigLocal() {
+      localStorage.setItem(KEYS.GH_CFG, JSON.stringify(state.ghConfig));
+    }
+
+    function isGithubConfigured() {
+      return Boolean(state.ghConfig.owner && state.ghConfig.repo && state.ghConfig.token);
+    }
+
+    /* ==========================================================================
+       4. 雲端狀態膠囊與 Toast 提示
+       ========================================================================== */
+    function updateSyncPill(status, customLabel) {
+      state.syncStatus = status;
+      const pill = document.getElementById('syncStatusPill');
+      pill.className = `sync-pill ${status}`;
+      if (customLabel) {
+        pill.textContent = customLabel;
+        return;
+      }
+      if (status === 'synced') pill.textContent = '☁️ 已同步';
+      else if (status === 'syncing') pill.textContent = '⏳ 同步中...';
+      else if (status === 'error') pill.textContent = '⚠️ 同步失敗';
+      else pill.textContent = '📱 未連雲端';
+    }
+
+    let toastTimer = null;
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        el.classList.remove('show');
+      }, 2600);
+    }
+
+    /* ==========================================================================
+       5. GitHub Private Repository 雲端讀寫與自動合併引擎
+       ========================================================================== */
+    function mergeRemotePayload(remote) {
+      if (!remote || typeof remote !== 'object') return;
+
+      const remoteDeleted = Array.isArray(remote.deletedIds) ? remote.deletedIds : [];
+      const mergedDeletedSet = new Set([...state.deletedIds, ...remoteDeleted]);
+      state.deletedIds = Array.from(mergedDeletedSet);
+
+      // 以 record.id 合併，尊重 deletedIds 並保留較新的 updatedAt
+      const recordMap = new Map();
+      for (const r of state.records) {
+        if (!mergedDeletedSet.has(r.id)) {
+          recordMap.set(r.id, r);
+        }
+      }
+      const remoteRecords = Array.isArray(remote.records) ? remote.records : [];
+      for (const rr of remoteRecords) {
+        if (!rr || !rr.id || mergedDeletedSet.has(rr.id)) continue;
+        const existing = recordMap.get(rr.id);
+        if (!existing || (rr.updatedAt || 0) >= (existing.updatedAt || 0)) {
+          recordMap.set(rr.id, rr);
+        }
+      }
+      state.records = Array.from(recordMap.values());
+
+      // 合併商店清單（去重複）
+      const remoteStores = Array.isArray(remote.stores) ? remote.stores : [];
+      const storeSet = new Set([...state.stores, ...remoteStores]);
+      state.stores = Array.from(storeSet).filter(Boolean);
+
+      saveLocalState();
+      refreshAllViews();
+    }
+
+    async function fetchGithubFileInfo() {
+      const { owner, repo, token } = state.ghConfig;
+      const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/data.json?t=${Date.now()}`;
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json'
+        }
+      });
+      return res;
+    }
+
+    async function pullFromGithub(silent = false) {
+      if (!isGithubConfigured()) {
+        updateSyncPill('disconnected');
+        return false;
+      }
+      updateSyncPill('syncing');
+      try {
+        const res = await fetchGithubFileInfo();
+        if (res.status === 404) {
+          // 檢查資料庫本身是否存在
+          const { owner, repo, token } = state.ghConfig;
+          const repoCheck = await fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/vnd.github+json'
+            }
+          });
+          if (!repoCheck.ok) {
+            throw new Error(repoCheck.status === 401 ? 'Token 無效或已過期' : '找不到此私人資料庫，請檢查名稱');
+          }
+          // 資料庫是全新的，自動建立 data.json 並上傳本機資料
+          const pushed = await pushToGithub(silent);
+          return pushed;
+        }
+
+        if (!res.ok) {
+          throw new Error(res.status === 401 || res.status === 403 ? 'Token 權限不足（需 Contents 讀寫權限）' : `GitHub 錯誤 (${res.status})`);
+        }
+
+        const data = await res.json();
+        if (data && data.content) {
+          const decodedText = base64ToUtf8(data.content);
+          const remotePayload = JSON.parse(decodedText);
+          mergeRemotePayload(remotePayload);
+        }
+
+        updateSyncPill('synced');
+        if (!silent) showToast('☁️ 已從 GitHub 載入最新資料');
+        return true;
+      } catch (err) {
+        console.error('pullFromGithub 失敗:', err);
+        updateSyncPill('error');
+        if (!silent) showToast(`⚠️ ${err.message || '從 GitHub 載入失敗'}`);
+        return false;
+      }
+    }
+
+    async function pushToGithub(silent = true, retryCount = 0) {
+      if (!isGithubConfigured()) {
+        updateSyncPill('disconnected');
+        return false;
+      }
+      updateSyncPill('syncing');
+      const { owner, repo, token } = state.ghConfig;
+      const putUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/data.json`;
+
+      try {
+        // 先取得最新檔案 sha 與遠端內容（避免覆蓋另一半剛新增的資料）
+        let sha = null;
+        const checkRes = await fetchGithubFileInfo();
+        if (checkRes.ok) {
+          const existingFile = await checkRes.json();
+          sha = existingFile.sha;
+          if (existingFile.content) {
+            try {
+              const remoteObj = JSON.parse(base64ToUtf8(existingFile.content));
+              mergeRemotePayload(remoteObj);
+            } catch (_) {}
+          }
+        } else if (checkRes.status !== 404) {
+          throw new Error(checkRes.status === 401 || checkRes.status === 403 ? 'Token 無效或權限不足' : `連線錯誤 (${checkRes.status})`);
+        }
+
+        const payload = {
+          records: state.records,
+          stores: state.stores,
+          deletedIds: state.deletedIds,
+          updatedAt: new Date().toISOString()
+        };
+
+        const bodyObj = {
+          message: `Update price data (${new Date().toLocaleString('zh-HK')})`,
+          content: utf8ToBase64(JSON.stringify(payload))
+        };
+        if (sha) {
+          bodyObj.sha = sha;
+        }
+
+        const putRes = await fetch(putUrl, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(bodyObj)
+        });
+
+        // 若發生 409 版本衝突，自動重新拉取合併並重試一次
+        if (putRes.status === 409 && retryCount < 1) {
+          return await pushToGithub(silent, retryCount + 1);
+        }
+
+        if (!putRes.ok) {
+          throw new Error(`上傳失敗 (${putRes.status})`);
+        }
+
+        updateSyncPill('synced');
+        if (!silent) showToast('☁️ 已成功同步至 GitHub');
+        return true;
+      } catch (err) {
+        console.error('pushToGithub 失敗:', err);
+        updateSyncPill('error');
+        if (!silent) showToast(`⚠️ ${err.message || '同步至 GitHub 失敗'}`);
+        return false;
+      }
+    }
+
+    /* ==========================================================================
+       6. GitHub 設定視窗與夫妻一鍵設定碼
+       ========================================================================== */
+    function openGithubModal() {
+      document.getElementById('ghOwner').value = state.ghConfig.owner || '';
+      document.getElementById('ghRepo').value = state.ghConfig.repo || 'gejia-data';
+      document.getElementById('ghToken').value = state.ghConfig.token || '';
+      document.getElementById('coupleCodeInput').value = '';
+      openModal('githubModal');
+    }
+
+    function toggleTokenVisibility() {
+      const input = document.getElementById('ghToken');
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
+
+    async function testAndSaveGithubConfig() {
+      const owner = document.getElementById('ghOwner').value.trim();
+      const repo = document.getElementById('ghRepo').value.trim() || 'gejia-data';
+      const token = document.getElementById('ghToken').value.trim();
+
+      if (!owner || !repo || !token) {
+        showToast('請填寫完整的用戶名、資料庫名稱及 Token');
+        return;
+      }
+
+      state.ghConfig = { owner, repo, token };
+      saveGithubConfigLocal();
+
+      const ok = await pullFromGithub(false);
+      if (ok) {
+        closeModal('githubModal');
+      }
+    }
+
+    async function manualPullFromGithub() {
+      const owner = document.getElementById('ghOwner').value.trim();
+      const repo = document.getElementById('ghRepo').value.trim() || 'gejia-data';
+      const token = document.getElementById('ghToken').value.trim();
+      if (owner && repo && token) {
+        state.ghConfig = { owner, repo, token };
+        saveGithubConfigLocal();
+      }
+      await pullFromGithub(false);
+    }
+
+    async function manualPushToGithub() {
+      const owner = document.getElementById('ghOwner').value.trim();
+      const repo = document.getElementById('ghRepo').value.trim() || 'gejia-data';
+      const token = document.getElementById('ghToken').value.trim();
+      if (owner && repo && token) {
+        state.ghConfig = { owner, repo, token };
+        saveGithubConfigLocal();
+      }
+      await pushToGithub(false);
+    }
+
+    function copyTextToClipboard(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      let success = false;
+      try {
+        success = document.execCommand('copy');
+      } catch (_) {}
+      document.body.removeChild(ta);
+      return success;
+    }
+
+    function copyCoupleShareCode() {
+      const owner = document.getElementById('ghOwner').value.trim() || state.ghConfig.owner;
+      const repo = document.getElementById('ghRepo').value.trim() || state.ghConfig.repo || 'gejia-data';
+      const token = document.getElementById('ghToken').value.trim() || state.ghConfig.token;
+
+      if (!owner || !repo || !token) {
+        showToast('請先填寫並儲存 GitHub 設定');
+        return;
+      }
+
+      const code = 'GEJIA_GH:' + utf8ToBase64(JSON.stringify({ owner, repo, token }));
+      if (copyTextToClipboard(code)) {
+        showToast('📋 已複製夫妻一鍵設定碼，可直接貼給另一半！');
+      } else {
+        showToast('複製失敗，請手動選取複製');
+      }
+    }
+
+    async function applyCoupleShareCode() {
+      const raw = document.getElementById('coupleCodeInput').value.trim();
+      if (!raw.startsWith('GEJIA_GH:')) {
+        showToast('設定碼格式不正確，應以 GEJIA_GH: 開頭');
+        return;
+      }
+      try {
+        const parsed = JSON.parse(base64ToUtf8(raw.slice('GEJIA_GH:'.length)));
+        if (!parsed.owner || !parsed.repo || !parsed.token) {
+          throw new Error('設定碼內容不完整');
+        }
+        state.ghConfig = {
+          owner: parsed.owner,
+          repo: parsed.repo,
+          token: parsed.token
+        };
+        saveGithubConfigLocal();
+        document.getElementById('ghOwner').value = parsed.owner;
+        document.getElementById('ghRepo').value = parsed.repo;
+        document.getElementById('ghToken').value = parsed.token;
+
+        const ok = await pullFromGithub(false);
+        if (ok) {
+          closeModal('githubModal');
+        }
+      } catch (err) {
+        showToast('⚠️ 設定碼解析失敗，請確認有完整複製');
+      }
+    }
+
+    /* ==========================================================================
+       7. 刪除紀錄與清空示範資料功能
+       ========================================================================== */
+    function openConfirmDialog(title, message, okBtnLabel, onConfirm) {
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmMessage').textContent = message;
+      const okBtn = document.getElementById('confirmOkBtn');
+      okBtn.textContent = okBtnLabel || '確定刪除';
+      okBtn.onclick = async () => {
+        closeModal('confirmModal');
+        await onConfirm();
+      };
+      openModal('confirmModal');
+    }
+
+    function confirmDeleteRecord(recordId) {
+      const rec = state.records.find(r => r.id === recordId);
+      if (!rec) return;
+      openConfirmDialog(
+        '刪除格價紀錄',
+        `確定要永久刪除「${rec.productName} (${rec.capacity}) - ${rec.store} (£${Number(rec.effectivePrice).toFixed(2)})」嗎？`,
+        '🗑️ 確定刪除',
+        async () => {
+          state.records = state.records.filter(r => r.id !== recordId);
+          if (!state.deletedIds.includes(recordId)) {
+            state.deletedIds.push(recordId);
+          }
+          saveLocalState();
+          refreshAllViews();
+          showToast('🗑️ 已刪除該筆紀錄');
+          await pushToGithub(true);
+        }
+      );
+    }
+
+    function confirmClearDemo() {
+      const demoList = state.records.filter(r => r.isDemo);
+      if (demoList.length === 0) {
+        showToast('目前沒有示範資料');
+        return;
+      }
+      openConfirmDialog(
+        '清空示範資料',
+        `確定要一鍵清空全部 ${demoList.length} 筆示範資料嗎？你自行新增的紀錄會完整保留。`,
+        '🧹 清空示範資料',
+        async () => {
+          const demoIds = demoList.map(r => r.id);
+          state.records = state.records.filter(r => !r.isDemo);
+          state.deletedIds = Array.from(new Set([...state.deletedIds, ...demoIds]));
+          if (state.selectedProductChip && !state.records.some(r => r.productName === state.selectedProductChip)) {
+            state.selectedProductChip = '';
+          }
+          saveLocalState();
+          refreshAllViews();
+          showToast('🧹 已清空全部示範資料');
+          await pushToGithub(true);
+        }
+      );
+    }
+
+    function confirmClearAll() {
+      if (state.records.length === 0) {
+        showToast('目前沒有任何紀錄可清空');
+        return;
+      }
+      openConfirmDialog(
+        '清空全部紀錄',
+        `警告：這將會永久刪除全部 ${state.records.length} 筆價格紀錄（包含雲端同步紀錄），確定繼續嗎？`,
+        '⚠️ 確定全部清空',
+        async () => {
+          const allIds = state.records.map(r => r.id);
+          state.records = [];
+          state.deletedIds = Array.from(new Set([...state.deletedIds, ...allIds]));
+          state.selectedProductChip = '';
+          saveLocalState();
+          refreshAllViews();
+          showToast('已清空全部紀錄');
+          await pushToGithub(true);
+        }
+      );
+    }
+
+    /* ==========================================================================
+       8. 分頁 1：🔍 查價搜尋與各店 3 點里程碑渲染
+       ========================================================================== */
+    function handleSearchInput() {
+      const val = document.getElementById('searchInput').value;
+      document.getElementById('searchClearBtn').classList.toggle('visible', val.length > 0);
+      // 若使用者手動修改文字且與鎖定膠囊不同，解除膠囊鎖定
+      if (state.selectedProductChip && val.trim() !== state.selectedProductChip) {
+        state.selectedProductChip = '';
+      }
+      updateSearchDynamicFilters();
+      renderSearchResults();
+    }
+
+    function clearSearchInput() {
+      document.getElementById('searchInput').value = '';
+      state.selectedProductChip = '';
+      document.getElementById('searchClearBtn').classList.remove('visible');
+      updateSearchDynamicFilters();
+      renderSearchResults();
+    }
+
+    function toggleProductChip(productName) {
+      if (state.selectedProductChip === productName) {
+        state.selectedProductChip = '';
+        document.getElementById('searchInput').value = '';
+        document.getElementById('searchClearBtn').classList.remove('visible');
+      } else {
+        state.selectedProductChip = productName;
+        document.getElementById('searchInput').value = productName;
+        document.getElementById('searchClearBtn').classList.add('visible');
+      }
+      updateSearchDynamicFilters();
+      renderSearchResults();
+    }
+
+    function getKeywordMatchedRecords() {
+      const rawQuery = document.getElementById('searchInput').value.trim().toLowerCase();
+      if (state.selectedProductChip) {
+        return state.records.filter(r => r.productName === state.selectedProductChip);
+      }
+      if (!rawQuery) {
+        return [...state.records];
+      }
+      return state.records.filter(r =>
+        (r.productName || '').toLowerCase().includes(rawQuery) ||
+        (r.store || '').toLowerCase().includes(rawQuery) ||
+        (r.capacity || '').toLowerCase().includes(rawQuery) ||
+        (r.note || '').toLowerCase().includes(rawQuery)
+      );
+    }
+
+    function updateSearchDynamicFilters() {
+      const matched = getKeywordMatchedRecords();
+
+      // 1. 更新符合貨品快速點選膠囊
+      const chipsContainer = document.getElementById('productQuickChips');
+      const distinctProducts = Array.from(new Set(matched.map(r => r.productName))).slice(0, 14);
+      chipsContainer.innerHTML = distinctProducts.map(name => {
+        const activeClass = state.selectedProductChip === name ? 'active' : '';
+        return `<button type="button" class="chip ${activeClass}" onclick="toggleProductChip('${escapeHtmlAttr(name)}')">${escapeHtml(name)}</button>`;
+      }).join('');
+
+      // 2. 動態更新「選容量」下拉選單
+      const capSelect = document.getElementById('filterCapacity');
+      const prevCap = capSelect.value;
+      const distinctCaps = Array.from(new Set(matched.map(r => r.capacity).filter(Boolean)));
+      capSelect.innerHTML = `<option value="ALL">全部容量</option>` +
+        distinctCaps.map(c => `<option value="${escapeHtmlAttr(c)}">${escapeHtml(c)}</option>`).join('');
+      capSelect.value = distinctCaps.includes(prevCap) ? prevCap : 'ALL';
+
+      // 3. 動態更新「選商店」下拉選單
+      const storeSelect = document.getElementById('filterStore');
+      const prevStore = storeSelect.value;
+      const distinctStores = Array.from(new Set([
+        ...matched.map(r => r.store).filter(Boolean),
+        ...state.stores
+      ]));
+      storeSelect.innerHTML = `<option value="ALL">全部商店</option>` +
+        distinctStores.map(s => `<option value="${escapeHtmlAttr(s)}">${escapeHtml(s)}</option>`).join('');
+      storeSelect.value = distinctStores.includes(prevStore) ? prevStore : 'ALL';
+    }
+
+    function computeMilestonesForList(list) {
+      if (!list || list.length === 0) return [];
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 183);
+      const sixMonthCutoff = sixMonthsAgo.toISOString().slice(0, 10);
+
+      // 按日期新到舊排序（同日則較後建立者在前）
+      const byDateDesc = [...list].sort((a, b) => {
+        if (b.date !== a.date) return b.date.localeCompare(a.date);
+        return (b.createdAt || 0) - (a.createdAt || 0);
+      });
+
+      const latestRec = byDateDesc[0];
+
+      // 歷史最低（同價取最新日期）
+      const allTimeLowest = [...byDateDesc].sort((a, b) => a.effectivePrice - b.effectivePrice)[0];
+
+      // 近 6 個月最低
+      const recent6mList = byDateDesc.filter(r => r.date >= sixMonthCutoff);
+      const sixMonthLowest = recent6mList.length > 0
+        ? [...recent6mList].sort((a, b) => a.effectivePrice - b.effectivePrice)[0]
+        : null;
+
+      // 去重複合併相同紀錄的標籤
+      const ordered = [];
+      const map = new Map();
+
+      function attach(rec, badgeType, badgeText) {
+        if (!rec) return;
+        if (!map.has(rec.id)) {
+          const entry = { record: rec, badges: [] };
+          map.set(rec.id, entry);
+          ordered.push(entry);
+        }
+        map.get(rec.id).badges.push({ type: badgeType, text: badgeText });
+      }
+
+      attach(latestRec, 'latest', '🕒 最近價格');
+      attach(sixMonthLowest, 'sixm', '📅 近6個月最低');
+      attach(allTimeLowest, 'alltime', '👑 歷史最低');
+
+      return ordered;
+    }
+
+    function renderSearchResults() {
+      // 更新示範資料橫幅顯示狀態
+      const hasDemo = state.records.some(r => r.isDemo);
+      document.getElementById('demoBanner').style.display = hasDemo ? 'flex' : 'none';
+
+      const container = document.getElementById('searchResultsContainer');
+      let filtered = getKeywordMatchedRecords();
+
+      const selectedCap = document.getElementById('filterCapacity').value;
+      const selectedStore = document.getElementById('filterStore').value;
+
+      if (selectedCap !== 'ALL') {
+        filtered = filtered.filter(r => r.capacity === selectedCap);
+      }
+      if (selectedStore !== 'ALL') {
+        filtered = filtered.filter(r => r.store === selectedStore);
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="card empty-state">
+            <div class="empty-state-icon">🛒</div>
+            <div style="font-weight: 700; color: var(--text); margin-bottom: 4px;">找不到符合的格價紀錄</div>
+            <div style="font-size: 13px;">試試清除搜尋關鍵字，或點下方「＋ 記錄價格」新增第一筆！</div>
+          </div>
+        `;
+        return;
+      }
+
+      // 極簡卡片標題判斷：鎖定單一貨品名稱時隱藏重複貨品名；同時指定容量時連容量一併隱藏
+      const distinctProductNames = new Set(filtered.map(r => r.productName));
+      const hideProductName = Boolean(state.selectedProductChip) || distinctProductNames.size === 1;
+      const hideCapacity = hideProductName && selectedCap !== 'ALL';
+
+      // 按商店分組
+      const storeGroupsMap = new Map();
+      for (const r of filtered) {
+        const sName = r.store || '未分類商店';
+        if (!storeGroupsMap.has(sName)) {
+          storeGroupsMap.set(sName, []);
+        }
+        storeGroupsMap.get(sName).push(r);
+      }
+
+      // 為每間商店計算里程碑，並以最低「最近價格」升冪排序（最抵買排最頂）
+      const storeCardsData = Array.from(storeGroupsMap.entries()).map(([storeName, storeRecords]) => {
+        // 若同一商店內包含多個貨品/容量，分別計算各 (貨品+容量) 的 3 點里程碑再彙整
+        const subGroups = new Map();
+        for (const r of storeRecords) {
+          const key = `${r.productName}__${r.capacity}`;
+          if (!subGroups.has(key)) subGroups.set(key, []);
+          subGroups.get(key).push(r);
+        }
+
+        let milestones = [];
+        for (const subList of subGroups.values()) {
+          milestones = milestones.concat(computeMilestonesForList(subList));
+        }
+
+        // 找出該店最低的「最近價格」作排序依據
+        const latestPrices = milestones
+          .filter(m => m.badges.some(b => b.type === 'latest'))
+          .map(m => m.record.effectivePrice);
+        const lowestCurrentPrice = latestPrices.length > 0
+          ? Math.min(...latestPrices)
+          : Math.min(...storeRecords.map(r => r.effectivePrice));
+
+        // 該店全部紀錄（按日期新到舊）
+        const allSorted = [...storeRecords].sort((a, b) => {
+          if (b.date !== a.date) return b.date.localeCompare(a.date);
+          return (b.createdAt || 0) - (a.createdAt || 0);
+        });
+
+        return {
+          storeName,
+          milestones,
+          lowestCurrentPrice,
+          allSorted
+        };
+      });
+
+      storeCardsData.sort((a, b) => a.lowestCurrentPrice - b.lowestCurrentPrice);
+
+      container.innerHTML = storeCardsData.map((card, idx) => {
+        const rankBadge = idx === 0 && storeCardsData.length > 1
+          ? `<span class="store-rank-badge">🏆 目前最抵</span>`
+          : '';
+
+        const milestonesHtml = card.milestones.map(m => {
+          const r = m.record;
+          const badgesHtml = m.badges.map(b => `<span class="m-badge ${b.type}">${b.text}</span>`).join('') +
+            (r.isDemo ? `<span class="m-badge demo">示範</span>` : '');
+
+          let titleLine = '';
+          if (!hideProductName && !hideCapacity) {
+            titleLine = `${escapeHtml(r.productName)} <span style="color: var(--text-muted); font-weight: 600;">(${escapeHtml(r.capacity)})</span>`;
+          } else if (hideProductName && !hideCapacity) {
+            titleLine = `規格：${escapeHtml(r.capacity)}`;
+          }
+
+          const hasSale = r.salePrice !== null && r.salePrice !== undefined && Number(r.salePrice) < Number(r.regularPrice);
+          const priceHtml = hasSale
+            ? `<span class="price-reg-strike">£${Number(r.regularPrice).toFixed(2)}</span><span class="price-main is-sale">£${Number(r.salePrice).toFixed(2)}</span>`
+            : `<span class="price-main">£${Number(r.effectivePrice).toFixed(2)}</span>`;
+
+          const photoHtml = r.photo
+            ? `<img class="thumb-img" src="${r.photo}" alt="貨品相片" onclick="openLightbox('${r.id}')" />`
+            : '';
+
+          return `
+            <div class="milestone-row">
+              <div class="milestone-info">
+                <div class="badges-wrap">${badgesHtml}</div>
+                ${titleLine ? `<div class="item-meta-line">${titleLine}</div>` : ''}
+                <div class="date-note-line">
+                  ${escapeHtml(r.date)}${r.note ? ` · ${escapeHtml(r.note)}` : ''}
+                </div>
+              </div>
+              <div class="milestone-right">
+                <div class="price-box">${priceHtml}</div>
+                ${photoHtml}
+                <button type="button" class="del-icon-btn" title="刪除此紀錄" onclick="confirmDeleteRecord('${r.id}')">🗑️</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        const drawerId = `storeDrawer_${idx}`;
+        const allRowsHtml = card.allSorted.map(r => {
+          const hasSale = r.salePrice !== null && r.salePrice !== undefined && Number(r.salePrice) < Number(r.regularPrice);
+          const priceText = hasSale
+            ? `<span style="text-decoration:line-through; color:#94a3b8; font-size:12px;">£${Number(r.regularPrice).toFixed(2)}</span> <strong style="color:#d97706;">£${Number(r.salePrice).toFixed(2)}</strong>`
+            : `<strong>£${Number(r.effectivePrice).toFixed(2)}</strong>`;
+          return `
+            <div class="milestone-row" style="padding: 8px 0;">
+              <div class="milestone-info">
+                <div class="item-meta-line" style="font-size: 13px;">
+                  ${escapeHtml(r.productName)} (${escapeHtml(r.capacity)}) ${r.isDemo ? '<span class="m-badge demo">示範</span>' : ''}
+                </div>
+                <div class="date-note-line">${escapeHtml(r.date)}${r.note ? ` · ${escapeHtml(r.note)}` : ''}</div>
+              </div>
+              <div class="milestone-right">
+                <div style="font-size: 14px;">${priceText}</div>
+                ${r.photo ? `<img class="thumb-img" style="width:36px;height:36px;" src="${r.photo}" alt="相片" onclick="openLightbox('${r.id}')" />` : ''}
+                <button type="button" class="del-icon-btn" style="width:28px;height:28px;" onclick="confirmDeleteRecord('${r.id}')">🗑️</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="store-card">
+            <div class="store-card-header">
+              <div class="store-title">🏪 ${escapeHtml(card.storeName)}</div>
+              ${rankBadge}
+            </div>
+            <div class="milestone-list">
+              ${milestonesHtml}
+            </div>
+            <button type="button" class="expand-all-btn" onclick="toggleStoreDrawer('${drawerId}', this, ${card.allSorted.length})">
+              ▼ 查看該店全部紀錄 (${card.allSorted.length}筆)
+            </button>
+            <div id="${drawerId}" class="all-records-drawer">
+              ${allRowsHtml}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleStoreDrawer(drawerId, btn, count) {
+      const el = document.getElementById(drawerId);
+      const isOpen = el.classList.toggle('open');
+      btn.textContent = isOpen ? `▲ 收起全部紀錄 (${count}筆)` : `▼ 查看該店全部紀錄 (${count}筆)`;
+    }
+
+    /* ==========================================================================
+       9. 分頁 2：＋ 記錄價格、自動完成建議、相片壓縮與儲存
+       ========================================================================== */
+    function renderAddStoreDropdown(selectStoreName) {
+      const select = document.getElementById('recStore');
+      const currentVal = selectStoreName || select.value;
+      if (state.stores.length === 0) {
+        select.innerHTML = `<option value="">-- 請先按右方「+ 新增商店」 --</option>`;
+        return;
+      }
+      select.innerHTML = `<option value="">-- 請選擇商店 --</option>` +
+        state.stores.map(s => `<option value="${escapeHtmlAttr(s)}">${escapeHtml(s)}</option>`).join('');
+      if (currentVal && state.stores.includes(currentVal)) {
+        select.value = currentVal;
+      }
+    }
+
+    function setCapacityPreset(val) {
+      document.getElementById('recCapacity').value = val;
+    }
+
+    function toggleInlineAddStore() {
+      const box = document.getElementById('inlineAddStoreBox');
+      const isHidden = box.style.display === 'none';
+      box.style.display = isHidden ? 'flex' : 'none';
+      if (isHidden) {
+        document.getElementById('inlineNewStoreInput').focus();
+      }
+    }
+
+    async function saveInlineNewStore() {
+      const input = document.getElementById('inlineNewStoreInput');
+      const name = input.value.trim();
+      if (!name) {
+        showToast('請輸入商店名稱');
+        return;
+      }
+      if (!state.stores.includes(name)) {
+        state.stores.push(name);
+        saveLocalState();
+        renderAddStoreDropdown(name);
+        updateSearchDynamicFilters();
+        showToast(`✅ 已新增商店「${name}」`);
+        await pushToGithub(true);
+      } else {
+        renderAddStoreDropdown(name);
+      }
+      input.value = '';
+      document.getElementById('inlineAddStoreBox').style.display = 'none';
+    }
+
+    function handleProductAutocomplete() {
+      const input = document.getElementById('recProduct');
+      const listEl = document.getElementById('productAutocomplete');
+      const q = input.value.trim().toLowerCase();
+
+      // 取得每個貨品名稱最新的一筆紀錄作為範本
+      const latestByProduct = new Map();
+      const sorted = [...state.records].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      for (const r of sorted) {
+        if (!latestByProduct.has(r.productName)) {
+          latestByProduct.set(r.productName, r);
+        }
+      }
+
+      const matches = Array.from(latestByProduct.values())
+        .filter(r => !q || r.productName.toLowerCase().includes(q))
+        .slice(0, 8);
+
+      if (matches.length === 0) {
+        listEl.classList.remove('open');
+        return;
+      }
+
+      listEl.innerHTML = matches.map(r => `
+        <div class="ac-item" onclick="applyProductSuggestion('${r.id}')">
+          <div>
+            <div style="font-weight: 700; font-size: 14px;">${escapeHtml(r.productName)}</div>
+            <div style="font-size: 12px; color: var(--text-muted);">${escapeHtml(r.capacity)} · ${escapeHtml(r.store)}</div>
+          </div>
+          <div style="font-weight: 800; color: var(--primary-dark);">£${Number(r.effectivePrice).toFixed(2)}</div>
+        </div>
+      `).join('');
+      listEl.classList.add('open');
+    }
+
+    function applyProductSuggestion(recordId) {
+      const rec = state.records.find(r => r.id === recordId);
+      document.getElementById('productAutocomplete').classList.remove('open');
+      if (!rec) return;
+
+      document.getElementById('recProduct').value = rec.productName || '';
+      document.getElementById('recCapacity').value = rec.capacity || '';
+
+      // 確保該商店存在於商店清單中以便選取
+      if (rec.store && !state.stores.includes(rec.store)) {
+        state.stores.push(rec.store);
+        saveLocalState();
+      }
+      renderAddStoreDropdown(rec.store);
+
+      document.getElementById('recRegPrice').value = rec.regularPrice != null ? rec.regularPrice : '';
+      document.getElementById('recSalePrice').value = rec.salePrice != null ? rec.salePrice : '';
+      document.getElementById('recNote').value = rec.note || '';
+      // 日期保持為今天
+      document.getElementById('recDate').value = getTodayISO();
+
+      if (rec.photo) {
+        state.compressedPhotoDataUrl = rec.photo;
+        document.getElementById('photoPreviewImg').src = rec.photo;
+        const approxKb = Math.round((rec.photo.length * 3) / 4 / 1024);
+        document.getElementById('photoSizeInfo').textContent = `沿用相片（約 ${approxKb} KB）`;
+        document.getElementById('photoPreviewBox').classList.add('visible');
+      } else {
+        clearSelectedPhoto();
+      }
+
+      showToast('✨ 已自動帶入上次貨品資料（日期設為今天）');
+    }
+
+    // 點擊頁面其他位置時關閉自動完成清單
+    document.addEventListener('click', (e) => {
+      const ac = document.getElementById('productAutocomplete');
+      const inp = document.getElementById('recProduct');
+      if (ac && inp && !ac.contains(e.target) && e.target !== inp) {
+        ac.classList.remove('open');
+      }
+    });
+
+    // HTML5 Canvas 自動壓縮相片 (最長邊 500px，JPEG 0.65 品質)
+    function handlePhotoSelected(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const MAX_SIDE = 500;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height && width > MAX_SIDE) {
+            height = Math.round((height * MAX_SIDE) / width);
+            width = MAX_SIDE;
+          } else if (height >= width && height > MAX_SIDE) {
+            width = Math.round((width * MAX_SIDE) / height);
+            height = MAX_SIDE;
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
+          state.compressedPhotoDataUrl = dataUrl;
+
+          const approxKb = Math.round((dataUrl.length * 3) / 4 / 1024);
+          document.getElementById('photoPreviewImg').src = dataUrl;
+          document.getElementById('photoSizeInfo').textContent = `壓縮後約 ${approxKb} KB (${width}×${height})`;
+          document.getElementById('photoPreviewBox').classList.add('visible');
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clearSelectedPhoto() {
+      state.compressedPhotoDataUrl = '';
+      document.getElementById('recPhotoInput').value = '';
+      document.getElementById('photoPreviewImg').src = '';
+      document.getElementById('photoPreviewBox').classList.remove('visible');
+    }
+
+    async function handleSaveRecord(event) {
+      event.preventDefault();
+
+      const productName = document.getElementById('recProduct').value.trim();
+      const capacity = document.getElementById('recCapacity').value.trim();
+      const store = document.getElementById('recStore').value.trim();
+      const regRaw = document.getElementById('recRegPrice').value;
+      const saleRaw = document.getElementById('recSalePrice').value;
+      const date = document.getElementById('recDate').value || getTodayISO();
+      const note = document.getElementById('recNote').value.trim();
+
+      if (!productName || !capacity || !store || regRaw === '') {
+        showToast('請填寫所有必填欄位（*）');
+        return;
+      }
+
+      const regularPrice = parseFloat(regRaw);
+      const salePrice = saleRaw !== '' ? parseFloat(saleRaw) : null;
+      const effectivePrice = (salePrice !== null && !isNaN(salePrice)) ? salePrice : regularPrice;
+
+      const newRecord = {
+        id: generateId('rec'),
+        productName,
+        capacity,
+        store,
+        regularPrice,
+        salePrice,
+        effectivePrice,
+        date,
+        note,
+        photo: state.compressedPhotoDataUrl || '',
+        isDemo: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+
+      state.records.push(newRecord);
+      saveLocalState();
+
+      // 重置表單並切回查價搜尋頁
+      document.getElementById('addRecordForm').reset();
+      document.getElementById('recDate').value = getTodayISO();
+      clearSelectedPhoto();
+
+      refreshAllViews();
+      switchTab('search');
+      showToast('✅ 已儲存格價紀錄！');
+
+      // 背景自動同步至 GitHub
+      await pushToGithub(true);
+    }
+
+    /* ==========================================================================
+       10. 分頁 3：📈 歷史價格（按商店分組 + 連續同價自動摺疊 + 單筆刪除）
+       ========================================================================== */
+    function updateHistoryFilters() {
+      const prodSel = document.getElementById('histProductSelect');
+      const capSel = document.getElementById('histCapacitySelect');
+      const prevProd = prodSel.value;
+      const prevCap = capSel.value;
+
+      const products = Array.from(new Set(state.records.map(r => r.productName)));
+      prodSel.innerHTML = `<option value="ALL">全部貨品 (${products.length}款)</option>` +
+        products.map(p => `<option value="${escapeHtmlAttr(p)}">${escapeHtml(p)}</option>`).join('');
+      prodSel.value = products.includes(prevProd) ? prevProd : 'ALL';
+
+      const relevantRecords = prodSel.value === 'ALL'
+        ? state.records
+        : state.records.filter(r => r.productName === prodSel.value);
+
+      const caps = Array.from(new Set(relevantRecords.map(r => r.capacity).filter(Boolean)));
+      capSel.innerHTML = `<option value="ALL">全部容量</option>` +
+        caps.map(c => `<option value="${escapeHtmlAttr(c)}">${escapeHtml(c)}</option>`).join('');
+      capSel.value = caps.includes(prevCap) ? prevCap : 'ALL';
+    }
+
+    function renderHistoryTab() {
+      const container = document.getElementById('historyResultsContainer');
+      const selectedProd = document.getElementById('histProductSelect').value;
+      const selectedPeriod = document.getElementById('histPeriodSelect').value;
+      const selectedCap = document.getElementById('histCapacitySelect').value;
+
+      let list = [...state.records];
+      if (selectedProd !== 'ALL') {
+        list = list.filter(r => r.productName === selectedProd);
+      }
+      if (selectedCap !== 'ALL') {
+        list = list.filter(r => r.capacity === selectedCap);
+      }
+      if (selectedPeriod !== 'ALL') {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - (selectedPeriod === '6M' ? 183 : 365));
+        const cutoffStr = cutoff.toISOString().slice(0, 10);
+        list = list.filter(r => r.date >= cutoffStr);
+      }
+
+      if (list.length === 0) {
+        container.innerHTML = `
+          <div class="card empty-state">
+            <div class="empty-state-icon">📈</div>
+            <div style="font-weight: 700; color: var(--text);">此篩選條件下暫無歷史紀錄</div>
+          </div>
+        `;
+        return;
+      }
+
+      // 按商店分組
+      const byStore = new Map();
+      for (const r of list) {
+        const s = r.store || '未分類商店';
+        if (!byStore.has(s)) byStore.set(s, []);
+        byStore.get(s).push(r);
+      }
+
+      let collapseCounter = 0;
+
+      container.innerHTML = Array.from(byStore.entries()).map(([storeName, storeRecords]) => {
+        // 商店內再依「貨品 + 容量」子分組，各自按時間順序計算升跌與摺疊連續同價
+        const byItem = new Map();
+        for (const r of storeRecords) {
+          const key = `${r.productName}__${r.capacity}`;
+          if (!byItem.has(key)) byItem.set(key, []);
+          byItem.get(key).push(r);
+        }
+
+        const sectionsHtml = Array.from(byItem.values()).map(itemRecords => {
+          // 由新到舊排序
+          const sortedDesc = [...itemRecords].sort((a, b) => {
+            if (b.date !== a.date) return b.date.localeCompare(a.date);
+            return (b.createdAt || 0) - (a.createdAt || 0);
+          });
+
+          // 計算每筆相對於上一筆（較舊一筆）的價格變動
+          const enriched = sortedDesc.map((rec, idx) => {
+            const older = sortedDesc[idx + 1];
+            let deltaHtml = '';
+            if (older) {
+              const diff = Number((rec.effectivePrice - older.effectivePrice).toFixed(2));
+              if (diff < 0) {
+                deltaHtml = `<span class="delta-badge delta-down">▼ -£${Math.abs(diff).toFixed(2)}</span>`;
+              } else if (diff > 0) {
+                deltaHtml = `<span class="delta-badge delta-up">▲ +£${diff.toFixed(2)}</span>`;
+              } else {
+                deltaHtml = `<span class="delta-badge delta-same">持平</span>`;
+              }
+            }
+            return { rec, deltaHtml };
+          });
+
+          // 將連續相同 effectivePrice 的紀錄自動摺疊
+          const blocks = [];
+          let i = 0;
+          while (i < enriched.length) {
+            const head = enriched[i];
+            const sameStreak = [];
+            let j = i + 1;
+            while (j < enriched.length && Number(enriched[j].rec.effectivePrice) === Number(head.rec.effectivePrice)) {
+              sameStreak.push(enriched[j]);
+              j++;
+            }
+            blocks.push({ head, hiddenStreak: sameStreak });
+            i = j;
+          }
+
+          const showItemHeader = selectedProd === 'ALL' || selectedCap === 'ALL';
+          const itemTitleHtml = showItemHeader
+            ? `<div style="font-size: 13.5px; font-weight: 800; color: #334155; margin: 8px 0 4px 0;">📦 ${escapeHtml(sortedDesc[0].productName)} (${escapeHtml(sortedDesc[0].capacity)})</div>`
+            : '';
+
+          const rowsHtml = blocks.map(blk => {
+            const renderSingleHistRow = (entry) => {
+              const r = entry.rec;
+              const hasSale = r.salePrice !== null && r.salePrice !== undefined && Number(r.salePrice) < Number(r.regularPrice);
+              const priceDisp = hasSale
+                ? `<span style="text-decoration:line-through; color:#94a3b8; font-size:12px;">£${Number(r.regularPrice).toFixed(2)}</span> <strong style="color:#d97706;">£${Number(r.salePrice).toFixed(2)}</strong>`
+                : `<strong>£${Number(r.effectivePrice).toFixed(2)}</strong>`;
+              return `
+                <div class="hist-row">
+                  <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: 13.5px; font-weight: 700;">
+                      ${escapeHtml(r.date)} ${entry.deltaHtml} ${r.isDemo ? '<span class="m-badge demo">示範</span>' : ''}
+                    </div>
+                    ${r.note ? `<div style="font-size: 12px; color: var(--text-muted);">${escapeHtml(r.note)}</div>` : ''}
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="font-size: 15px; text-align: right;">${priceDisp}</div>
+                    <button type="button" class="del-icon-btn" style="width:28px;height:28px;" title="刪除此紀錄" onclick="confirmDeleteRecord('${r.id}')">🗑️</button>
+                  </div>
+                </div>
+              `;
+            };
+
+            let html = renderSingleHistRow(blk.head);
+            if (blk.hiddenStreak.length > 0) {
+              const cid = `histCollapse_${++collapseCounter}`;
+              const hiddenHtml = blk.hiddenStreak.map(renderSingleHistRow).join('');
+              html += `
+                <button type="button" class="collapsed-pill" onclick="toggleHistCollapse('${cid}', this, ${blk.hiddenStreak.length})">
+                  🔁 已省略 ${blk.hiddenStreak.length} 次同價紀錄（點擊展開）
+                </button>
+                <div id="${cid}" class="collapsed-group">
+                  ${hiddenHtml}
+                </div>
+              `;
+            }
+            return html;
+          }).join('');
+
+          return itemTitleHtml + rowsHtml;
+        }).join('');
+
+        return `
+          <div class="card">
+            <div class="history-group-title">
+              <span>🏪 ${escapeHtml(storeName)}</span>
+              <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">共 ${storeRecords.length} 筆</span>
+            </div>
+            ${sectionsHtml}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleHistCollapse(id, btn, count) {
+      const el = document.getElementById(id);
+      const isOpen = el.classList.toggle('open');
+      btn.textContent = isOpen
+        ? `▲ 收起 ${count} 次同價紀錄`
+        : `🔁 已省略 ${count} 次同價紀錄（點擊展開）`;
+    }
+
+    /* ==========================================================================
+       11. 商店管理彈窗與工具函式
+       ========================================================================== */
+    function openStoresModal() {
+      renderManageStoresList();
+      openModal('storesModal');
+    }
+
+    function renderManageStoresList() {
+      const listEl = document.getElementById('manageStoresList');
+      if (state.stores.length === 0) {
+        listEl.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding:20px 0; font-size:13.5px;">尚未新增任何商店，請在上方輸入新增！</div>`;
+        return;
+      }
+      listEl.innerHTML = state.stores.map((s, idx) => `
+        <div class="hist-row">
+          <span style="font-weight: 700;">🏪 ${escapeHtml(s)}</span>
+          <button type="button" class="del-icon-btn" onclick="deleteStoreByIndex(${idx})">🗑️</button>
+        </div>
+      `).join('');
+    }
+
+    async function addStoreFromModal() {
+      const input = document.getElementById('manageStoreInput');
+      const name = input.value.trim();
+      if (!name) {
+        showToast('請輸入商店名稱');
+        return;
+      }
+      if (state.stores.includes(name)) {
+        showToast('此商店已存在');
+        return;
+      }
+      state.stores.push(name);
+      input.value = '';
+      saveLocalState();
+      renderManageStoresList();
+      refreshAllViews();
+      showToast(`✅ 已新增商店「${name}」`);
+      await pushToGithub(true);
+    }
+
+    async function deleteStoreByIndex(idx) {
+      const removed = state.stores[idx];
+      state.stores.splice(idx, 1);
+      saveLocalState();
+      renderManageStoresList();
+      refreshAllViews();
+      showToast(`🗑️ 已移除商店「${removed}」`);
+      await pushToGithub(true);
+    }
+
+    function downloadSelfHtml() {
+      const htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'index.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('📥 已開始下載 index.html');
+    }
+
+    /* ==========================================================================
+       12. 分頁切換、彈窗控制、燈箱與跳脫輔助
+       ========================================================================== */
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+      document.getElementById(`tab-${tabName}`).classList.add('active');
+      document.getElementById(`nav-${tabName}`).classList.add('active');
+
+      if (tabName === 'search') {
+        updateSearchDynamicFilters();
+        renderSearchResults();
+      } else if (tabName === 'add') {
+        renderAddStoreDropdown();
+      } else if (tabName === 'history') {
+        updateHistoryFilters();
+        renderHistoryTab();
+      }
+    }
+
+    function openMoreModal() {
+      openModal('moreModal');
+    }
+
+    function openModal(id) {
+      document.getElementById(id).classList.add('open');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    function closeModalOnBackdrop(event, id) {
+      if (event.target.id === id) {
+        closeModal(id);
+      }
+    }
+
+    function openLightbox(recordId) {
+      const rec = state.records.find(r => r.id === recordId);
+      if (!rec || !rec.photo) return;
+      document.getElementById('lightboxImg').src = rec.photo;
+      document.getElementById('photoLightbox').classList.add('open');
+    }
+
+    function closeLightbox() {
+      document.getElementById('photoLightbox').classList.remove('open');
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function escapeHtmlAttr(str) {
+      return escapeHtml(str).replace(/\\/g, '\\\\');
+    }
+
+    function refreshAllViews() {
+      updateSearchDynamicFilters();
+      renderSearchResults();
+      renderAddStoreDropdown();
+      updateHistoryFilters();
+      renderHistoryTab();
+    }
+
+    /* ==========================================================================
+       13. 啟動入口：先極速載入本機資料，再靜默背景同步 GitHub
+       ========================================================================== */
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('recDate').value = getTodayISO();
+      loadLocalState();
+      refreshAllViews();
+
+      if (isGithubConfigured()) {
+        pullFromGithub(true);
+      } else {
+        updateSyncPill('disconnected');
+      }
+    });
+  </script>
+</body>
+</html>
